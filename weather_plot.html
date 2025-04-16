@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CSV Weather Plotter</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+    }
+    #chart {
+      margin-top: 30px;
+      width: 100%;
+      min-height: 600px;
+    }
+    input[type="file"] {
+      display: block;
+      margin: 0 auto 20px auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Upload CSV to Plot Weather Data</h2>
+  <input type="file" id="csvFile" accept=".csv">
+  <div id="chart"></div>
+
+  <script>
+    document.getElementById('csvFile').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const text = e.target.result;
+        const data = parseCSV(text);
+        plotData(data);
+      };
+      reader.readAsText(file);
+    });
+
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      const data = {};
+
+      headers.forEach(header => data[header] = []);
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        headers.forEach((header, j) => {
+          const val = values[j].trim();
+          if (header === 'recordedAt') {
+            data[header].push(val);
+          } else {
+            data[header].push(parseFloat(val));
+          }
+        });
+      }
+
+      return data;
+    }
+
+    function plotData(data) {
+      const time = data['recordedAt'];
+      const traces = [];
+      const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'];
+      
+      const numAttributes = Object.keys(data).filter(key => key !== 'recordedAt').length;
+      const layout = {
+        title: 'Weather Data Plots',
+        grid: { rows: numAttributes, columns: 1, pattern: 'independent' },
+        height: numAttributes * 300,
+        showlegend: false,
+        paper_bgcolor: 'white',
+        plot_bgcolor: 'white',
+      };
+      
+      let index = 0;
+      for (let key in data) {
+        if (key !== 'recordedAt') {
+          traces.push({
+            x: time,
+            y: data[key],
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: key,
+            line: { color: colors[index % colors.length] },
+            xaxis: `x${index + 1}`,
+            yaxis: `y${index + 1}`
+          });
+          
+          layout[`xaxis${index + 1}`] = {
+            title: 'Time',
+            gridcolor: '#e0e0e0',
+            domain: [0.1, 0.9]
+          };
+          
+          layout[`yaxis${index + 1}`] = {
+            title: key,
+            titlefont: { color: colors[index % colors.length] },
+            gridcolor: '#e0e0e0'
+          };
+          
+          index++;
+        }
+      }
+
+      Plotly.newPlot('chart', traces, layout);
+    }
+  </script>
+
+</body>
+</html>
